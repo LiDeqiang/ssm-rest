@@ -30,13 +30,13 @@ public class StudentController {
     @RequestMapping(value = "/count", method = RequestMethod.GET)
     @ApiOperation(value = "查询注册学生数量")
     public Integer getCount() {
-        Integer studentCount = (Integer) redisTemplate.opsForValue().get("student_count");
+        Integer studentCount = (Integer) redisTemplate.opsForValue().get("student:count");
         if (Objects.nonNull(studentCount)) {
             System.out.println(" student count get from cache ... ");
         } else {
             System.out.println(" find student count from db ... ");
             studentCount = studentService.selectStudentCount();
-            redisTemplate.opsForValue().set("student_count", studentCount, 1, TimeUnit.HOURS);
+            redisTemplate.opsForValue().set("student:count", studentCount, 1, TimeUnit.HOURS);
         }
         return studentCount;
     }

@@ -6,7 +6,9 @@ import com.lee.model.Student;
 import com.lee.model.StudentExample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,7 +44,7 @@ public class StudentService {
     @Autowired
     private StudentExtendMapper studentExtendMapper;
 
-    @Cacheable(value = "studentCache", key = "'student' + #id")
+    @Cacheable(value = "student", key = "'id:' + #id")
     @Transactional(readOnly = true)
     public Student getStudentById(Integer id) {
         StudentExample studentExample = new StudentExample();
@@ -64,8 +66,7 @@ public class StudentService {
      * key的值通过RedisCacheConfig中重写的generate()方法生成
      * 2).在用来记录studentCache缓存区间中的缓存数据的key的studentCache~keys(zset类型)中新添加一个value，值为上面新增数据的key
      */
-    @Cacheable(value = "studentCache")
-    @Transactional(readOnly = true)
+    @Cacheable(value = "student", key = "'allStudent'")
     public List<Student> getAllStudent() {
         return studentExtendMapper.getAllStudent();
     }
@@ -73,7 +74,10 @@ public class StudentService {
     /**
      * 根据id删除用户
      */
-    @CacheEvict(value = "studentCache", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "student", key = "allStudent"),
+            @CacheEvict(value = "student", key = "'id:' + #id")
+    })
     @Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
     public int delStuById(Integer id) {
         StudentExample studentExample = new StudentExample();
@@ -86,13 +90,25 @@ public class StudentService {
      * 1.value + key 移除value缓存区间内的键为key的数据
      * 2.value + allEntries=true 移除value缓存区间内的所有数据
      */
-    @CacheEvict(value = "studentCache", allEntries = true)
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "student", key = "allStudent")
+            },
+            cacheable = {
+                    @Cacheable(value = "student", key = "'id:' + #student.id")
+            })
     @Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
     public int insetStu(Student student) {
         return studentMapper.insert(student);
     }
 
-    @CacheEvict(value = {"studentCache"}, allEntries = true)
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "student", key = "allStudent")
+            },
+            put = {
+                    @CachePut(value = "student", key = "'id:' + #student.getId()")
+            })
     @Transactional(propagation = Propagation.REQUIRED, rollbackFor = Exception.class)
     public int updateStu(Student student) {
         StudentExample studentExample = new StudentExample();
@@ -114,7 +130,7 @@ public class StudentService {
      * 1) selectNowIds 缓存的数据的key，可以在RedisCacheConfig中重写generate()方法自定义
      * 3.然后在zset类型的aboutUser中添加一个值，值为上线的key
      */
-    @Cacheable(value = "studentCache")
+    @Cacheable(value = "student")
     public List<Integer> selectNowIds() {
         return studentExtendMapper.selectNowIds();
     }
